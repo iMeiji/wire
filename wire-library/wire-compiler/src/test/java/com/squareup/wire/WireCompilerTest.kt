@@ -473,6 +473,15 @@ class WireCompilerTest {
   }
 
   @Test
+  fun testPersonBinding() {
+    val sources = arrayOf("person.proto")
+    compileToBinding(sources, "--nameSuffix='BINDING' ")
+
+    val outputs = arrayOf("com/squareup/wire/protos/kotlin/person/Person.kt")
+    assertKotlinOutputs(outputs)
+  }
+
+  @Test
   fun testPersonAndroidKotlin() {
     val sources = arrayOf("person.proto")
     compileToKotlin(sources, "--android")
@@ -649,6 +658,9 @@ class WireCompilerTest {
   private fun compileToKotlin(sources: Array<String>, vararg extraArgs: String) =
     invokeCompiler(TargetLanguage.KOTLIN, sources, *extraArgs)
 
+  private fun compileToBinding(sources: Array<String>, vararg extraArgs: String) =
+    invokeCompiler(TargetLanguage.BINDING, sources, *extraArgs)
+
   private fun invokeCompiler(
     target: TargetLanguage,
     sources: Array<String>,
@@ -714,6 +726,11 @@ class WireCompilerTest {
     KOTLIN {
       override fun protoPathArg() = "--proto_path=../wire-tests/src/commonTest/proto/kotlin"
       override fun outArg(testDirPath: Path) = "--kotlin_out=$testDirPath"
+      override fun protoFolderSuffix() = "kotlin"
+    },
+    BINDING {
+      override fun protoPathArg() = "--proto_path=../wire-tests/src/commonTest/proto/kotlin"
+      override fun outArg(testDirPath: Path) = "--binding_out=$testDirPath"
       override fun protoFolderSuffix() = "kotlin"
     };
 

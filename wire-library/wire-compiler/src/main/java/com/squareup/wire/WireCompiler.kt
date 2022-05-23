@@ -15,14 +15,10 @@
  */
 package com.squareup.wire
 
+import com.squareup.wire.schema.*
 import com.squareup.wire.schema.CoreLoader.WIRE_RUNTIME_JAR
 import com.squareup.wire.schema.CoreLoader.isWireRuntimeProto
-import com.squareup.wire.schema.JavaTarget
-import com.squareup.wire.schema.KotlinTarget
-import com.squareup.wire.schema.Location
-import com.squareup.wire.schema.SwiftTarget
 import com.squareup.wire.schema.Target
-import com.squareup.wire.schema.WireRun
 import com.squareup.wire.schema.toOkioFileSystem
 import okio.FileNotFoundException
 import okio.FileSystem
@@ -42,6 +38,7 @@ import java.nio.file.FileSystem as NioFileSystem
  * java WireCompiler --proto_path=<path>
  *   [--java_out=<path>]
  *   [--kotlin_out=<path>]
+ *   [--binding_out=<path>]
  *   [--swift_out=<path>]
  *   [--files=<protos.include>]
  *   [--includes=<message_name>[,<message_name>...]]
@@ -86,6 +83,7 @@ class WireCompiler internal constructor(
   val protoPaths: List<String>,
   val javaOut: String?,
   val kotlinOut: String?,
+  val bindingOut: String?,
   val swiftOut: String?,
   val sourceFileNames: List<String>,
   val treeShakingRoots: List<String>,
@@ -116,6 +114,15 @@ class WireCompiler internal constructor(
     } else if (kotlinOut != null) {
       targets += KotlinTarget(
         outDirectory = kotlinOut,
+        android = emitAndroid,
+        javaInterop = javaInterop,
+        emitDeclaredOptions = emitDeclaredOptions,
+        emitAppliedOptions = emitAppliedOptions,
+        boxOneOfsMinSize = kotlinBoxOneOfsMinSize,
+      )
+    } else if (bindingOut != null) {
+      targets += BindingTarget(
+        outDirectory = bindingOut,
         android = emitAndroid,
         javaInterop = javaInterop,
         emitDeclaredOptions = emitDeclaredOptions,
@@ -187,6 +194,7 @@ class WireCompiler internal constructor(
     private const val PROTO_PATH_FLAG = "--proto_path="
     private const val JAVA_OUT_FLAG = "--java_out="
     private const val KOTLIN_OUT_FLAG = "--kotlin_out="
+    private const val BINDING_OUT_FLAG = "--binding_out="
     private const val SWIFT_OUT_FLAG = "--swift_out="
     private const val FILES_FLAG = "--files="
     private const val INCLUDES_FLAG = "--includes="
@@ -202,7 +210,8 @@ class WireCompiler internal constructor(
     private const val KOTLIN_BOX_ONEOFS_MIN_SIZE = "--kotlin_box_oneofs_min_size="
 
     @Throws(IOException::class)
-    @JvmStatic fun main(args: Array<String>) {
+    @JvmStatic
+    fun main(args: Array<String>) {
       try {
         val wireCompiler = forArgs(args = args)
         wireCompiler.compile()
@@ -238,6 +247,7 @@ class WireCompiler internal constructor(
       var modules = mapOf<String, WireRun.Module>()
       var javaOut: String? = null
       var kotlinOut: String? = null
+      var bindingOut: String? = null
       var swiftOut: String? = null
       var emitAndroid = false
       var emitAndroidAnnotations = false
@@ -262,6 +272,10 @@ class WireCompiler internal constructor(
           arg.startsWith(KOTLIN_OUT_FLAG) -> {
             check(kotlinOut == null) { "kotlin_out already set" }
             kotlinOut = arg.substring(KOTLIN_OUT_FLAG.length)
+          }
+
+          arg.startsWith(BINDING_OUT_FLAG) -> {
+            bindingOut = arg.substring(BINDING_OUT_FLAG.length)
           }
 
           arg.startsWith(KOTLIN_BOX_ONEOFS_MIN_SIZE) -> {
@@ -311,9 +325,9 @@ class WireCompiler internal constructor(
         }
       }
 
-      if (javaOut == null && kotlinOut == null && swiftOut == null) {
+      if (javaOut == null && kotlinOut == null && bindingOut == null && swiftOut == null) {
         throw WireException(
-          "Nothing to do! Specify $JAVA_OUT_FLAG, $KOTLIN_OUT_FLAG, or $SWIFT_OUT_FLAG"
+          "Nothing to do! Specify $JAVA_OUT_FLAG, $KOTLIN_OUT_FLAG, $BINDING_OUT_FLAG, or $SWIFT_OUT_FLAG"
         )
       }
 
@@ -327,6 +341,7 @@ class WireCompiler internal constructor(
         protoPaths = protoPaths,
         javaOut = javaOut,
         kotlinOut = kotlinOut,
+        bindingOut = bindingOut,
         swiftOut = swiftOut,
         sourceFileNames = sourceFileNames,
         treeShakingRoots = treeShakingRoots,

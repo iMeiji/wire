@@ -33,6 +33,7 @@ data class ProtoFile(
   val syntax: Syntax?,
 ) {
   private var javaPackage: Any? = null
+  private var javaOuterClassName: Any? = null
 
   fun toElement(): ProtoFileElement {
     return ProtoFileElement(
@@ -80,6 +81,9 @@ data class ProtoFile(
   }
 
   fun javaPackage(): String? {
+    if (javaPackage != null && javaOuterClassName != null) {
+      return javaPackage.toString() + "." + javaOuterClassName
+    }
     return javaPackage?.toString()
   }
 
@@ -105,6 +109,7 @@ data class ProtoFile(
       retainedServices, retainedExtends, retainedOptions, syntax
     )
     result.javaPackage = javaPackage
+    result.javaOuterClassName = javaOuterClassName
     return result
   }
 
@@ -123,6 +128,7 @@ data class ProtoFile(
       retainedServices, retainedExtends, retainedOptions, syntax
     )
     result.javaPackage = javaPackage
+    result.javaOuterClassName = javaOuterClassName
     return result
   }
 
@@ -151,6 +157,7 @@ data class ProtoFile(
         extendList, options, syntax
       )
       result.javaPackage = javaPackage
+      result.javaOuterClassName = javaOuterClassName
       result
     } else {
       this
@@ -160,6 +167,7 @@ data class ProtoFile(
   fun linkOptions(linker: Linker, validate: Boolean) {
     options.link(linker, location, validate)
     javaPackage = options.get(JAVA_PACKAGE)
+    javaOuterClassName = options.get(JAVA_OUTER_CLASSNAME)
   }
 
   override fun toString(): String {
@@ -172,6 +180,7 @@ data class ProtoFile(
 
   companion object {
     val JAVA_PACKAGE = ProtoMember.get(Options.FILE_OPTIONS, "java_package")
+    val JAVA_OUTER_CLASSNAME = ProtoMember.get(Options.FILE_OPTIONS, "java_outer_classname")
     val WIRE_PACKAGE = ProtoMember.get(Options.FILE_OPTIONS, "wire.wire_package")
 
     fun get(protoFileElement: ProtoFileElement): ProtoFile {
